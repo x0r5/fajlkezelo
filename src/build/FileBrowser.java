@@ -6,6 +6,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.IOException;
 import java.util.Date;
 import javax.swing.*;
 import javax.swing.event.*;
@@ -28,7 +29,6 @@ public class FileBrowser{
     private JTable table;
     private TableModel tableModel;
     private JSplitPane splitPane;
-    private JPanel upperPanel;
     private JPanel lowerPanel;
 
     private File selectedFile;
@@ -38,10 +38,13 @@ public class FileBrowser{
     private JLabel date;
     private JLabel size;
 
+    private JMenuBar menuBar;
+    private JMenu menuFile;
+
     public void create() {
         frame = new JFrame("File Browser");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setMinimumSize(new Dimension(800, 1000));
+        //frame.setMinimumSize(new Dimension(800, 1000));
         fileSystemView = FileSystemView.getFileSystemView();
         desktop = Desktop.getDesktop();
 
@@ -50,6 +53,7 @@ public class FileBrowser{
         new Thread(new CreateChildNodes(root)).start();
         treeModel = new DefaultTreeModel(root);
 
+        //tree
         tree = new JTree(treeModel);
         tree.setShowsRootHandles(true);
         tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
@@ -78,6 +82,21 @@ public class FileBrowser{
         JScrollPane scrollPaneTable = new JScrollPane(table);
 
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPaneTree, scrollPaneTable);
+
+        //menu
+        menuBar = new JMenuBar();
+        menuFile = new JMenu("Fájl");
+        menuBar.add(menuFile);
+        JMenuItem newFile = new JMenuItem("Új fájl...");
+        menuFile.add(newFile);
+        newFile.addActionListener(new NewFileActionListener());
+        JMenuItem newDir = new JMenuItem("Új mappa");
+        menuFile.add(newDir);
+        newDir.addActionListener(new NewDirActionListener());
+        frame.setJMenuBar(menuBar);
+        JMenuItem delFile = new JMenuItem("Törlés...");
+        menuFile.add(delFile);
+        delFile.addActionListener(new DeleteFileActionListener());
 
 
 
@@ -123,16 +142,10 @@ public class FileBrowser{
         });
         JButton show = new JButton("Mutat");
         buttonPanel.add(show);
-        show.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                try{
-                    desktop.open(selectedFile.getParentFile());
-                }catch (Exception ex){
-                    ex.printStackTrace();
-                }
-            }
-        });
+        show.addActionListener(new OpenFileActionListener());
+        JButton deleteButton = new JButton("Törlés");
+        buttonPanel.add(deleteButton);
+        deleteButton.addActionListener(new DeleteFileActionListener());
 
 
 
@@ -146,29 +159,100 @@ public class FileBrowser{
 
     }
 
+    class OpenFileActionListener implements ActionListener{
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try{
+                desktop.open(selectedFile.getParentFile());
+            }catch (Exception ex){
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    class NewDirActionListener implements ActionListener{
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try{
+                String s = (String)JOptionPane.showInputDialog(
+                        frame,
+                        "Az új mappa neve:",
+                        "Új mappa",
+                        JOptionPane.PLAIN_MESSAGE);
+                if (s.length() == 0){
+                    s = "newFolder";
+                }
+
+                if(selectedFile.isDirectory()){
+                    new File(selectedFile, s).mkdir();
+                }
+                else if(selectedFile.isFile()){
+                    new File(selectedFile.getParentFile(), s).mkdir();
+                }
+            }catch(Exception ex){ex.printStackTrace();}
+            tableModel.addNewList(selectedFile.listFiles());
+            tableModel.fireTableDataChanged();
+        }
+    }
+
+    class DeleteFileActionListener implements ActionListener{
+        @Override
+        public void actionPerformed(ActionEvent e) {
+
+
+            int ans = JOptionPane.showConfirmDialog(
+                    frame,
+                    "Biztosan törölni szeretnéd a " + selectedFile.getName() + " fájlt?",
+                    "Fájl törlése",
+                    JOptionPane.YES_NO_OPTION);
+            if (ans == 0){
+                selectedFile.delete();
+                tableModel.addNewList(selectedFile.getParentFile().listFiles());
+                tableModel.fireTableDataChanged();
+            }
+
+        }
+    }
+
+    class NewFileActionListener implements ActionListener{
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+
+            String s = (String)JOptionPane.showInputDialog(
+                    frame,
+                    "Az új fájl neve:",
+                    "Új fájl",
+                    JOptionPane.PLAIN_MESSAGE);
+            if (s.length() == 0){
+                s = "newFile";
+            }
+
+            try{
+                File dir;
+                if(selectedFile.isDirectory()){
+                    File f = new File(selectedFile, s);
+                    f.createNewFile();
+                }
+                else if(selectedFile.isFile()){
+                    File f = new File(selectedFile.getParentFile(), s);
+                    f.createNewFile();
+                }
+            }catch(IOException ex){ex.printStackTrace();}
+            tableModel.addNewList(selectedFile.listFiles());
+            tableModel.fireTableDataChanged();
+        }
+    }
+
     class MyTreeSelectionListener implements TreeSelectionListener{
 
         @Override
         public void valueChanged(TreeSelectionEvent e) {
             DefaultMutableTreeNode node = (DefaultMutableTreeNode)tree.getLastSelectedPathComponent();
-            //createChildren(node);
             new Thread(new CreateChildNodes(node)).start();
             tableModel.addNewList(((FileNode)node.getUserObject()).getFile().listFiles());
             tableModel.fireTableDataChanged();
-        }
-    }
-
-    class MyTreeExpansionListener implements javax.swing.event.TreeExpansionListener{
-
-        @Override
-        public void treeExpanded(TreeExpansionEvent event) {
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode)tree.getLastSelectedPathComponent();
-            new Thread(new CreateChildNodes(node)).start();
-        }
-
-        @Override
-        public void treeCollapsed(TreeExpansionEvent event) {
-
+            selectedFile = ((FileNode) node.getUserObject()).getFile();
         }
     }
 

@@ -22,7 +22,14 @@ public class CreateChildNodes implements Runnable{
         File[] files = file.listFiles();
         for(File f: files){
             if(f.isDirectory() && !f.getName().startsWith(".")){
-                node.add(new DefaultMutableTreeNode(new FileNode(f)));
+                DefaultMutableTreeNode childNode = new DefaultMutableTreeNode(new FileNode(f));
+                node.add(childNode);
+                File[] childFiles = f.listFiles();
+                for(File f2: childFiles){
+                    if(f2.isDirectory() && !f2.getName().startsWith(".")){
+                        childNode.add(new DefaultMutableTreeNode(new FileNode(f2)));
+                    }
+                }
             }
         }
     }
