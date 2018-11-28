@@ -7,7 +7,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.filechooser.FileSystemView;
@@ -40,6 +42,9 @@ public class FileBrowser{
 
     private JMenuBar menuBar;
     private JMenu menuFile;
+    private JMenu menuFavs;
+
+    private Favourites kedvencek = new Favourites();
 
     public void create() {
         frame = new JFrame("File Browser");
@@ -98,6 +103,15 @@ public class FileBrowser{
         menuFile.add(delFile);
         delFile.addActionListener(new DeleteFileActionListener());
 
+        menuFavs = new JMenu("Kedvencek");
+        menuBar.add(menuFavs);
+        List<File> listKedvencek = kedvencek.getList();
+        for(File f: listKedvencek){
+            JMenuItem item = new JMenuItem(f.getName());
+            item.addActionListener(new ChangeDirActionListener(f));
+            menuFavs.add(item);
+        }
+
 
 
         //lowerPanel for file info
@@ -146,6 +160,10 @@ public class FileBrowser{
         JButton deleteButton = new JButton("Törlés");
         buttonPanel.add(deleteButton);
         deleteButton.addActionListener(new DeleteFileActionListener());
+        JButton addToFavs = new JButton("Kedvencekhez");
+        addToFavs.addActionListener(new AddToFavsActionListener());
+        buttonPanel.add(addToFavs);
+
 
 
 
@@ -158,6 +176,8 @@ public class FileBrowser{
 
 
     }
+
+
 
     class OpenFileActionListener implements ActionListener{
         @Override
@@ -264,6 +284,40 @@ public class FileBrowser{
         }
     }
 
+    class AddToFavsActionListener implements ActionListener{
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if(selectedFile.isDirectory()){
+                JMenuItem button = new JMenuItem(selectedFile.getName());
+                button.addActionListener(new ChangeDirActionListener(selectedFile));
+                menuFavs.add(button);
+                kedvencek.addFav(selectedFile);
+                kedvencek.saveFavs();
+            }
+        }
+    }
+
+    class ChangeDirActionListener implements ActionListener{
+
+        File changeTo;
+
+        public ChangeDirActionListener(File f){
+            changeTo = f;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            changeDir(changeTo);
+        }
+    }
+
+
+    private void changeDir(File dir){
+        tableModel.addNewList(dir.listFiles());
+        tableModel.fireTableDataChanged();
+        selectedFile = dir;
+    }
 
     private void setFileInfo(File f){
         selectedFile = f;
