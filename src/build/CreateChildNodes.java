@@ -15,6 +15,7 @@ public class CreateChildNodes implements Runnable{
 
     public void run() {
         createChildren(rootNode);
+        //mapTheSystem(rootNode);
     }
 
     private void createChildren(DefaultMutableTreeNode node) {
@@ -34,4 +35,38 @@ public class CreateChildNodes implements Runnable{
         }
     }
 
+
+    private void mapTheSystem(DefaultMutableTreeNode node){
+        PathRunner pathRunner = new PathRunner(node);
+        new Thread(pathRunner).start();
+        rootNode = pathRunner.getNode();
+
+    }
+
+}
+
+
+
+class PathRunner implements Runnable{
+
+    private DefaultMutableTreeNode node;
+
+
+    public PathRunner(DefaultMutableTreeNode node){this.node = node;}
+    public DefaultMutableTreeNode getNode(){return node;}
+
+    @Override
+    public void run() {
+        System.out.println(Thread.currentThread().getName());
+        File file = ((FileNode)node.getUserObject()).getFile();
+        File[] files = file.listFiles();
+        for(File f: files){
+            if(f.isDirectory()){
+                DefaultMutableTreeNode childNode = new DefaultMutableTreeNode(new FileNode(f));
+                node.add(childNode);
+                new Thread(new PathRunner(childNode)).start();
+            }
+        }
+
+    }
 }
